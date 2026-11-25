@@ -34,7 +34,7 @@ jobs:
       - name: Build with devkitPro
         run: |
           docker run --rm -v "$PWD":/src -w /src devkitpro/devkita64:latest \
-            sh -c 'dkp-pacman -Syu --noconfirm --needed switch-curl switch-libarchive switch-pkg-config && make -j"$(nproc)"'
+            sh -c 'dkp-pacman -Syu --noconfirm --needed switch-curl switch-libarchive switch-zstd switch-pkg-config && make -j"$(nproc)"'
 
       - name: Attach ModGrab.nro to the release
         env:
