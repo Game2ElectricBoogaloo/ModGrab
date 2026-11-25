@@ -74,14 +74,9 @@ The output is `ModGrab.nro`.
 
 ### Releasing
 
-Bump `APP_VERSION` in the Makefile and commit. Then either publish a release on GitHub with a matching tag (like `v1.2.0`, no file needed), or push the tag:
+Bump `APP_VERSION` in the Makefile and push. Then publish a release on GitHub whose tag matches it (like `v1.2.0`), without attaching anything.
 
-```
-git tag v1.2.0
-git push origin v1.2.0
-```
-
-The `release` workflow in `.github/workflows/release.yml` builds `ModGrab.nro` with devkitPro on GitHub's servers and attaches it to the release, creating the release if the tag was pushed without one. It refuses to run if the tag and `APP_VERSION` don't match. GitHub records a SHA-256 for every release file, and ModGrab's self-updater (pointed at the repo by `cfg::UpdateRepo` in `include/config.hpp`) refuses any download that doesn't match it.
+The `release` workflow in `.github/workflows/release.yml` builds `ModGrab.nro` with devkitPro's Docker image and attaches it to the release. It refuses to run if the tag and `APP_VERSION` don't match. To rebuild an existing release, run the workflow by hand from the Actions tab and give it the tag. GitHub records a SHA-256 for every release file, and ModGrab's self-updater (pointed at the repo by `cfg::UpdateRepo` in `include/config.hpp`) refuses any download that doesn't match it.
 
 To regenerate `icon.jpg`:
 
