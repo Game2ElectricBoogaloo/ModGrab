@@ -40,6 +40,7 @@ private:
     net::ProgressFn progressReporter(const std::string& title, const std::string& detail, int64_t expectedSize);
     bool requireOnline();
     std::string persist();
+    void remergeWaiting();
     void reportErrors(const std::string& title, const std::string& success, const std::vector<std::string>& errors);
     const Title* findTitle(uint64_t titleId) const;
     Title titleFor(const InstalledMod& mod) const;

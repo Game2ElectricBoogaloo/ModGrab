@@ -3,6 +3,7 @@
 #include "gfx.hpp"
 #include "installer.hpp"
 #include "net.hpp"
+#include "originals.hpp"
 
 #include <switch.h>
 
@@ -51,6 +52,7 @@ int main(int argc, char** argv) {
             warning = warning.empty() ? dirError : warning + " " + dirError;
         std::string selfPath = argc > 0 && argv[0] && std::string(argv[0]).rfind(cfg::SdRoot, 0) == 0 ? argv[0] : cfg::SelfPath;
         App(warning, selfPath).run();
+        originals::close();
         nsExit();
     }
 

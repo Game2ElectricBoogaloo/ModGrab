@@ -2,6 +2,8 @@
 
 #include "compat.hpp"
 #include "config.hpp"
+#include "layers.hpp"
+#include "originals.hpp"
 #include "theme.hpp"
 #include "widgets.hpp"
 
@@ -92,12 +94,27 @@ void App::run() {
         ui::notice(input, "Couldn't list games", {error});
     if (!warning.empty())
         ui::notice(input, "Heads up", {warning});
+    remergeWaiting();
     if (auto problem = clockProblem())
         ui::notice(input, "Check the date and time", {*problem, "", "Fix it in System Settings > System > Date and Time, then restart ModGrab."});
     else
         offerSelfUpdate();
 
     gamesScreen();
+}
+
+void App::remergeWaiting() {
+    for (const Title& title : titles)
+        originals::useVersion(title.id, title.version);
+    if (std::none_of(store.mergedFiles().begin(), store.mergedFiles().end(), layers::retriable))
+        return;
+    ui::busy("ModGrab", "Merging mod files...");
+    size_t merged = layers::remergePending(store);
+    std::vector<std::string> notes = layers::takeNotes();
+    persist();
+    std::vector<std::string> lines = {std::to_string(merged) + " shared files were merged."};
+    lines.insert(lines.end(), notes.begin(), notes.end());
+    ui::notice(input, "Merged mods", lines);
 }
 
 const Title* App::findTitle(uint64_t titleId) const {
