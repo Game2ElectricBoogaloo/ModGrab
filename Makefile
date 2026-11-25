@@ -16,7 +16,7 @@ INCLUDES	:=	include lib
 
 APP_TITLE	:=	ModGrab
 APP_AUTHOR	:=	TheGameYT
-APP_VERSION	:=	1.1.0
+APP_VERSION	:=	1.2.0
 ICON		:=	icon.jpg
 
 PKGCONF		:=	$(PORTLIBS)/bin/aarch64-none-elf-pkg-config
