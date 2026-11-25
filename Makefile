@@ -9,7 +9,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 
 TARGET		:=	ModGrab
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source source/formats
 DATA		:=	data
 ROMFS		:=	romfs
 INCLUDES	:=	include lib
@@ -20,7 +20,7 @@ APP_VERSION	:=	1.1.0
 ICON		:=	icon.jpg
 
 PKGCONF		:=	$(PORTLIBS)/bin/aarch64-none-elf-pkg-config
-DEPS		:=	libcurl libarchive
+DEPS		:=	libcurl libarchive libzstd
 
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
