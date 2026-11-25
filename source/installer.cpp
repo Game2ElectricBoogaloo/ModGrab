@@ -172,7 +172,7 @@ std::string writeEntry(archive* reader, const std::string& dest) {
 }
 
 bool isStopDir(const std::string& dir) {
-    for (const char* stop : {cfg::DataDir, cfg::BackupDir, cfg::StashDir, cfg::LocalDir, cfg::DownloadDir})
+    for (const char* stop : {cfg::DataDir, cfg::BackupDir, cfg::StashDir, cfg::LocalDir, cfg::DownloadDir, cfg::LayerDir, cfg::OriginalsDir})
         if (dir == stop)
             return true;
     return dir + "/" == cfg::AtmosphereDir || dir + "/" == std::string(cfg::AtmosphereDir) + "contents/" || dir + "/" == cfg::UltimateModsDir ||
@@ -256,6 +256,38 @@ ExtractOutcome extractArchive(const std::string& archivePath, uint64_t titleId, 
         outcome.error = damagedMessage(reader);
     archive_read_free(reader);
     return outcome;
+}
+
+std::optional<std::vector<uint8_t>> readFile(const std::string& path) {
+    FILE* file = std::fopen(path.c_str(), "rb");
+    if (!file)
+        return std::nullopt;
+    std::vector<uint8_t> bytes;
+    uint8_t chunk[ReadBlock];
+    size_t read = 0;
+    while ((read = std::fread(chunk, 1, sizeof(chunk), file)) > 0)
+        bytes.insert(bytes.end(), chunk, chunk + read);
+    bool failed = std::ferror(file);
+    std::fclose(file);
+    if (failed)
+        return std::nullopt;
+    return bytes;
+}
+
+std::string writeFile(const std::string& path, const std::vector<uint8_t>& bytes) {
+    std::string dirError = makeDirs(path.substr(0, path.rfind('/')));
+    if (!dirError.empty())
+        return dirError;
+    FILE* file = std::fopen(path.c_str(), "wb");
+    if (!file)
+        return "can't create " + path + ": " + std::strerror(errno);
+    bool written = std::fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size();
+    bool closed = std::fclose(file) == 0;
+    if (!written || !closed) {
+        std::remove(path.c_str());
+        return "write failed for " + path + ", SD card full?";
+    }
+    return {};
 }
 
 bool fileExists(const std::string& path) {

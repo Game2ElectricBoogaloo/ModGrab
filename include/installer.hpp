@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -36,3 +37,5 @@ void pruneParents(const std::string& file);
 std::string moveFile(const std::string& from, const std::string& to);
 std::string makeDirs(const std::string& path);
 bool fileExists(const std::string& path);
+std::optional<std::vector<uint8_t>> readFile(const std::string& path);
+std::string writeFile(const std::string& path, const std::vector<uint8_t>& bytes);
