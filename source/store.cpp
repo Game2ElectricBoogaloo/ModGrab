@@ -67,6 +67,10 @@ std::string Store::load() {
             installed.push_back(std::move(mod));
         }
 
+        for (const json& entry : state.value("merged", json::array()))
+            merged.push_back({entry.at("path").get<std::string>(), std::stoull(entry.at("title").get<std::string>(), nullptr, 16),
+                              entry.value("layers", std::vector<int>{}), entry.value("combined", false), entry.value("version", "")});
+
         for (const auto& [titleHex, list] : state.value("presets", json::object()).items()) {
             std::vector<Preset>& target = presets[std::stoull(titleHex, nullptr, 16)];
             for (const json& preset : list)
@@ -75,11 +79,13 @@ std::string Store::load() {
     } catch (const json::exception& e) {
         gameLinks.clear();
         presets.clear();
+        merged.clear();
         installed.clear();
         return setAside(std::string("bad entry in state.json (") + e.what() + ")");
     } catch (const std::exception&) {
         gameLinks.clear();
         presets.clear();
+        merged.clear();
         installed.clear();
         return setAside("bad title id in state.json");
     }
@@ -114,6 +120,10 @@ std::string Store::save() const {
         });
     }
 
+    json mergedFiles = json::array();
+    for (const MergedFile& file : merged)
+        mergedFiles.push_back({{"path", file.path}, {"title", formatTitleId(file.titleId)}, {"layers", file.layers}, {"combined", file.combined}, {"version", file.gameVersion}});
+
     json presetsByGame = json::object();
     for (const auto& [titleId, list] : presets) {
         if (list.empty())
@@ -128,7 +138,7 @@ std::string Store::save() const {
         std::ofstream out(TempStatePath, std::ios::trunc);
         if (!out)
             return "can't write " + TempStatePath;
-        out << json{{"games", games}, {"mods", mods}, {"presets", presetsByGame}}.dump(2);
+        out << json{{"games", games}, {"mods", mods}, {"presets", presetsByGame}, {"merged", mergedFiles}}.dump(2);
         if (!out.flush())
             return "write to " + TempStatePath + " failed";
     }
@@ -186,7 +196,21 @@ InstalledMod* Store::coveringMod(const std::string& path, int modId) {
     return nullptr;
 }
 
+MergedFile* Store::mergedAt(const std::string& path) {
+    for (MergedFile& file : merged)
+        if (samePath(file.path, path))
+            return &file;
+    return nullptr;
+}
+
+void Store::dropMerged(const std::string& path) {
+    merged.erase(std::remove_if(merged.begin(), merged.end(), [&](const MergedFile& file) { return samePath(file.path, path); }), merged.end());
+}
+
 int Store::topOwner(const std::string& path) const {
+    for (const MergedFile& file : merged)
+        if (samePath(file.path, path) && !file.layers.empty())
+            return file.layers.back();
     for (const InstalledMod& mod : installed) {
         if (!mod.enabled || std::none_of(mod.files.begin(), mod.files.end(), [&](const std::string& file) { return samePath(file, path); }))
             continue;
@@ -207,6 +231,10 @@ bool Store::listedByOther(const std::string& path, int modId) const {
 
 bool samePath(const std::string& a, const std::string& b) {
     return strcasecmp(a.c_str(), b.c_str()) == 0;
+}
+
+void InstalledMod::dropBackup(const std::string& path) {
+    backups.erase(std::remove_if(backups.begin(), backups.end(), [&](const FileBackup& backup) { return samePath(backup.path, path); }), backups.end());
 }
 
 const FileBackup* InstalledMod::backupFor(const std::string& path) const {

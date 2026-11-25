@@ -28,6 +28,15 @@ struct InstalledMod {
 
     bool isLocal() const { return modId < 0; }
     const FileBackup* backupFor(const std::string& path) const;
+    void dropBackup(const std::string& path);
+};
+
+struct MergedFile {
+    std::string path;
+    uint64_t titleId = 0;
+    std::vector<int> layers;
+    bool combined = false;
+    std::string gameVersion;
 };
 
 struct Preset {
@@ -58,8 +67,13 @@ public:
 
     std::vector<Preset>& presetsFor(uint64_t titleId) { return presets[titleId]; }
 
+    std::vector<MergedFile>& mergedFiles() { return merged; }
+    MergedFile* mergedAt(const std::string& path);
+    void dropMerged(const std::string& path);
+
 private:
     std::map<uint64_t, int> gameLinks;
     std::map<uint64_t, std::vector<Preset>> presets;
     std::vector<InstalledMod> installed;
+    std::vector<MergedFile> merged;
 };
