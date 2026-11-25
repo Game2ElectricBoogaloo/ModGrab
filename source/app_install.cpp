@@ -79,13 +79,16 @@ std::string App::persist() {
 }
 
 void App::reportErrors(const std::string& title, const std::string& success, const std::vector<std::string>& errors) {
+    std::vector<std::string> notes = layers::takeNotes();
     if (errors.empty()) {
-        ui::notice(input, title, {success});
+        notes.insert(notes.begin(), success);
+        ui::notice(input, title, notes);
         return;
     }
     std::vector<std::string> lines = {std::to_string(errors.size()) + " problems:"};
     for (size_t i = 0; i < errors.size() && i < MaxListedProblems; i++)
         lines.push_back(errors[i]);
+    lines.insert(lines.end(), notes.begin(), notes.end());
     ui::notice(input, title + " with problems", lines);
 }
 
@@ -179,16 +182,19 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
     std::vector<std::string> previousFiles = previous && previous->enabled ? previous->files : std::vector<std::string>{};
     std::set<std::string> overridden;
     int existing = 0;
+    int shared = 0;
     for (const Placement& placement : scan.placements) {
         if (placement.root != variant || containsPath(previousFiles, placement.dest))
             continue;
         int owner = store.topOwner(placement.dest);
-        if (owner && owner != source.modId)
+        if (layers::canMerge(store, source.modId, placement.dest))
+            shared++;
+        else if (owner && owner != source.modId)
             overridden.insert(store.findMod(owner)->modName);
         else if (!owner && fileExists(placement.dest))
             existing++;
     }
-    if (!overridden.empty() || existing) {
+    if (!overridden.empty() || existing || shared) {
         std::vector<std::string> lines;
         if (!overridden.empty()) {
             std::string names;
@@ -198,6 +204,8 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
         }
         if (existing)
             lines.push_back(std::to_string(existing) + " files already on the SD card will be replaced.");
+        if (shared)
+            lines.push_back(std::to_string(shared) + " files are shared with other mods and will be merged together.");
         lines.push_back("");
         lines.push_back("Everything replaced is backed up and comes back when you uninstall or disable this mod.");
         if (!ui::confirm(input, "Mods overlap", lines, Tone::Warn))
@@ -208,15 +216,28 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
 
     std::vector<FileBackup> created;
     std::vector<std::string> touched;
+    std::vector<std::string> joining;
+    std::vector<std::string> relayered;
     ExtractOutcome outcome = extractArchive(
         archivePath, title.id, variant, scan.countIn(variant),
         [&](const std::string& dest, std::string& writeTo) {
             if (containsPath(touched, dest))
                 return std::string();
             touched.push_back(dest);
+            const MergedFile* file = store.mergedAt(dest);
+            if (file && std::find(file->layers.begin(), file->layers.end(), source.modId) != file->layers.end()) {
+                writeTo = layers::layerLocation(source.modId, dest);
+                relayered.push_back(dest);
+                return std::string();
+            }
             if (containsPath(previousFiles, dest)) {
                 if (const InstalledMod* above = store.coveringMod(dest, source.modId))
                     writeTo = layers::backupLocation(above->modId, dest);
+                return std::string();
+            }
+            if (layers::canMerge(store, source.modId, dest)) {
+                writeTo = layers::layerLocation(source.modId, dest);
+                joining.push_back(dest);
                 return std::string();
             }
             return layers::protect(store, source.modId, dest, created);
@@ -229,7 +250,9 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
     if (!outcome.error.empty()) {
         std::vector<std::string> fresh;
         for (const std::string& dest : outcome.written)
-            if (!containsPath(previousFiles, dest))
+            if (containsPath(joining, dest))
+                fresh.push_back(layers::layerLocation(source.modId, dest));
+            else if (!containsPath(previousFiles, dest))
                 fresh.push_back(dest);
         std::vector<std::string> leftovers = removeFiles(fresh);
         for (const FileBackup& backup : created) {
@@ -257,6 +280,14 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
         keptBackups = store.findMod(source.modId)->backups;
     }
 
+    for (const std::string& dest : relayered)
+        layers::rebuild(store, dest);
+    for (const std::string& dest : joining)
+        if (std::string error = layers::joinOrReplace(store, source.modId, title.id, dest, created); !error.empty())
+            problems.push_back(error);
+    for (std::string& note : layers::takeNotes())
+        problems.push_back(std::move(note));
+
     InstalledMod record;
     record.titleId = title.id;
     record.gameName = title.name;
@@ -279,6 +310,8 @@ bool App::installArchive(const Title& title, const ModSource& source, const std:
     std::vector<std::string> summary = {std::to_string(outcome.written.size()) + " files installed for " + title.name + "."};
     if (!created.empty())
         summary.push_back(std::to_string(created.size()) + " replaced files were backed up.");
+    if (!joining.empty())
+        summary.push_back(std::to_string(joining.size()) + " files were merged with other mods.");
     if (outcome.skipped)
         summary.push_back(std::to_string(outcome.skipped) + " extra files skipped (readmes, previews, other options).");
     if (scan.blocked)
