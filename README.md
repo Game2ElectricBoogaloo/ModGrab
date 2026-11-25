@@ -87,9 +87,11 @@ python tools/make_icon.py icon.jpg
 
 ## Troubleshooting
 
-- **"couldn't reach the server"**: the network is blocking the Switch or needs a proxy. ModGrab uses the proxy set in the Switch's wifi settings (System Settings > Internet > your network > Change Settings > Proxy). School and work networks often block homebrew traffic even when the site opens on a phone.
-- **"the Switch's DNS is blocking this site"**: something on the Switch (atmosphere/hosts or a custom DNS) sends gamebanana.com to 127.0.0.1.
-- **certificate errors**: the Switch only trusts a short list of certificate authorities. ModGrab adds the common ones from `romfs/certs.pem` (made with `python tools/make_certs.py`), and still checks every certificate. If a site moves to an authority that isn't in that list, add its root to `ROOTS` in the script and rebuild.
+If it says it couldn't reach the server, the network is blocking the Switch or needs a proxy. ModGrab uses the proxy set in the Switch's wifi settings (System Settings > Internet > your network > Change Settings > Proxy). School and work networks often block homebrew traffic even when the site opens fine on a phone.
+
+If it says the Switch's DNS is blocking the site, something on the Switch (atmosphere/hosts or a custom DNS) is sending gamebanana.com to 127.0.0.1.
+
+Certificate errors almost always mean the Switch's date is wrong, so check that first. Past that, the Switch only trusts a short list of certificate authorities. ModGrab adds the common ones from `romfs/certs.pem` (made with `python tools/make_certs.py`) and still checks every certificate. If a site moves to an authority that isn't in the list, add its root to `ROOTS` in the script and rebuild.
 
 ## Known limits
 
