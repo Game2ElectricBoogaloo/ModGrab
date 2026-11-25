@@ -20,6 +20,7 @@ A Nintendo Switch homebrew app that downloads mods from GameBanana and installs 
 - Installed mods screen (Y on the game list): check every mod for updates at once, open a mod to install its newer file, turn mods on and off, or uninstall.
 - Backups and layering. Any file a mod replaces, whether it came from another mod or you copied it by hand, is backed up first and put back when that mod is uninstalled or turned off. Mods can be stacked and removed in any order.
 - Overlap warnings. Before installing, ModGrab lists the installed mods whose files the new one replaces.
+- Merging. When two mods change the same archive (.sarc, .pack, .szs, .zs and the other SARC types) or the same .ips patch, ModGrab keeps both and builds one file that has both mods' changes in it, instead of the newer one wiping out the older. Archives are merged file by file inside, against the game's own copy, and nested archives get merged too. If both mods change the same file inside, the newer mod's version wins and ModGrab tells you which one clashed.
 - Turning a mod off parks its files in `switch/ModGrab/disabled/` and turning it back on puts them back, so you can test which mod breaks something without redownloading.
 - Presets. Save which mods are on for a game and switch between setups in one go.
 - Download queue. Queue files with Y and keep browsing while they download, then install them from the Downloads screen.
@@ -55,6 +56,7 @@ ModGrab keeps its data in `sdmc:/switch/ModGrab/`:
 - `downloads/` is temporary. Archives are deleted after install, except ones with a layout ModGrab doesn't recognize, which stay there so you can install them by hand.
 - `backups/<mod id>/` holds files a mod replaced, `disabled/<mod id>/` holds the files of mods that are turned off. Don't edit these by hand.
 - `local/` is where you put archives to install offline. ModGrab never deletes them.
+- `layers/<mod id>/` holds each mod's own copy of files that got merged, and `originals/<title id>/` holds the game's untouched copies ModGrab merges against.
 
 ## Building
 
@@ -101,6 +103,9 @@ Certificate errors almost always mean the Switch's date is wrong, so check that 
 - The game version check depends on the mod author writing the version somewhere. "No game version listed" means ModGrab couldn't tell, not that the mod is fine.
 - exefs_patches (.ips) only load on the exact build they were made for. ModGrab can't read a game's build ID, so it can't verify those.
 - There's no sort or category filter on the mod list. GameBanana's API ignored the sort and filter parameters in testing, so they were left out rather than shipped broken.
+- Merging archives needs the game's original copy of the file, and a homebrew app can only read that while it's running as the game. Open ModGrab by holding R while you start the game once (title override), and it merges anything that's waiting, then keeps the originals so it doesn't need that again. Until then the newest mod's copy is used. .ips patches merge without this.
+- When the game updates, merged archives get rebuilt against the new original the next time you open ModGrab through the game. Mods made for the old version still carry the old version's files inside their archives, so merging can't undo that.
+- Merging only works on SARC archives and .ips patches. Two mods that replace the same .bfres, .bntx, .byml or any other file still overlap, and the newer one wins like before.
 - Mods installed with an older ModGrab (before backups existed) don't have backups, so uninstalling them only deletes their own files.
 
 ## Credits
