@@ -1,0 +1,48 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkita64:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches APP_VERSION
+        run: |
+          version=$(awk '/^APP_VERSION/ {print $3}' Makefile)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Makefile says APP_VERSION $version but the tag is $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      - name: Install libraries
+        run: dkp-pacman -Syu --noconfirm --needed switch-curl switch-libarchive switch-pkg-config
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ModGrab
+          path: ModGrab.nro
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ModGrab
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" ModGrab.nro --repo "$GITHUB_REPOSITORY" --title "ModGrab ${GITHUB_REF_NAME#v}" --generate-notes

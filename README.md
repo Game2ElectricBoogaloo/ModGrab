@@ -74,7 +74,14 @@ The output is `ModGrab.nro`.
 
 ### Releasing
 
-The self-updater reads `cfg::UpdateRepo` in `include/config.hpp`. Bump `APP_VERSION` in the Makefile, build, and publish a GitHub release whose tag is the version (like `v1.2.0`) with `ModGrab.nro` attached. GitHub records a SHA-256 for every uploaded asset, and ModGrab refuses any download that doesn't match it.
+Bump `APP_VERSION` in the Makefile, commit, then push a matching tag:
+
+```
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The `release` workflow in `.github/workflows/release.yml` builds `ModGrab.nro` with devkitPro on GitHub's servers and publishes it as a release. It refuses to run if the tag and `APP_VERSION` don't match. GitHub records a SHA-256 for every release file, and ModGrab's self-updater (pointed at the repo by `cfg::UpdateRepo` in `include/config.hpp`) refuses any download that doesn't match it.
 
 To regenerate `icon.jpg`:
 
